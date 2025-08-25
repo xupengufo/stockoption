@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { AnalysisResult, StockData } from '../types';
 import SymbolSearch from './SymbolSearch';
@@ -16,14 +16,14 @@ const OptionsAnalyzer: React.FC = () => {
 
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
-  const fetchStockData = async (ticker: string) => {
+  const fetchStockData = useCallback(async (ticker: string) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/stock/${ticker}`);
       setStockData(response.data);
     } catch (error) {
       console.error('获取股票数据失败:', error);
     }
-  };
+  }, [API_BASE_URL]);
 
   const analyzeOptions = async () => {
     setLoading(true);
@@ -45,7 +45,7 @@ const OptionsAnalyzer: React.FC = () => {
     if (symbol) {
       fetchStockData(symbol);
     }
-  }, [symbol]);
+  }, [symbol, fetchStockData]);
 
   const currentPrice = stockData?.results?.[0]?.c || 0;
 

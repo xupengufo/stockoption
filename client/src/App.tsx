@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import OptionsAnalyzer from './components/OptionsAnalyzer';
 import Header from './components/Header';
 import './App.css';
