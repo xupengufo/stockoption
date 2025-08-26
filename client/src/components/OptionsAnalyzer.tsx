@@ -99,7 +99,7 @@ const OptionsAnalyzer: React.FC = () => {
   const DataSourceIndicator = () => {
     if (!dataSourceStatus) return null;
 
-    const { polygon, futu, yahoo, simulation } = dataSourceStatus;
+    const { polygon, futu, yahoo } = dataSourceStatus;
     
     return (
       <div className="bg-gray-50 rounded-lg p-4 mb-6">

@@ -60,6 +60,16 @@ export interface AnalysisResult {
     sharpeRatio: number;
     winRate: number;
   };
+  dataSourceInfo?: {
+    primary?: string;
+    optionsSource?: string;
+    polygonStatus?: string;
+    futuAPIStatus?: string;
+    quality?: string;
+    cost?: string;
+    fallbackReason?: string;
+    note?: string;
+  };
   timestamp?: string;
   dataSource?: string;
 }
