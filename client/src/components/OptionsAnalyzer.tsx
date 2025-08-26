@@ -31,7 +31,7 @@ const OptionsAnalyzer: React.FC = () => {
   const analyzeOptions = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/analyze`, {
+      const response = await axios.post(`${API_BASE_URL}/api/analyze-v2`, {
         symbol,
         strategy,
         riskTolerance
@@ -50,7 +50,7 @@ const OptionsAnalyzer: React.FC = () => {
     }
   }, [symbol, fetchStockData]);
 
-  const currentPrice = stockData?.results?.[0]?.c || 0;
+  const currentPrice = analysis?.currentPrice || stockData?.currentPrice || stockData?.results?.[0]?.c || 0;
 
   return (
     <div className="space-y-8">

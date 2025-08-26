@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>期权权利金修复测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-case { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 3px; }
+        .premium { font-weight: bold; color: #008000; }
+        .strike { font-weight: bold; color: #0066cc; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔧 期权权利金修复测试</h1>
+    
+    <div class="test-case">
+        <h3>测试1: AAPL 现金担保看跌期权</h3>
+        <button onclick="testStock('AAPL', 'cash-secured-put')">测试AAPL</button>
+        <div id="result-aapl-put" class="result"></div>
+    </div>
+
+    <div class="test-case">
+        <h3>测试2: TSLA 备兑看涨期权</h3>
+        <button onclick="testStock('TSLA', 'covered-call')">测试TSLA</button>
+        <div id="result-tsla-call" class="result"></div>
+    </div>
+
+    <div class="test-case">
+        <h3>测试3: NIO (中概股) 现金担保看跌</h3>
+        <button onclick="testStock('NIO', 'cash-secured-put')">测试NIO</button>
+        <div id="result-nio-put" class="result"></div>
+    </div>
+
+    <div class="test-case">
+        <h3>测试4: DPSP (小价股) 现金担保看跌</h3>
+        <button onclick="testStock('DPSP', 'cash-secured-put')">测试DPSP</button>
+        <div id="result-dpsp-put" class="result"></div>
+    </div>
+
+    <div class="test-case">
+        <h3>测试5: TEM (示例股票) 备兑看涨</h3>
+        <button onclick="testStock('TEM', 'covered-call')">测试TEM</button>
+        <div id="result-tem-call" class="result"></div>
+    </div>
+
+    <script>
+        async function testStock(symbol, strategy) {
+            const resultId = `result-${symbol.toLowerCase()}-${strategy.replace('-', '')}`;
+            const resultDiv = document.getElementById(resultId);
+            
+            resultDiv.innerHTML = `<p>🔄 正在测试 ${symbol} ${strategy}...</p>`;
+            
+            try {
+                const response = await fetch('/api/analyze-v2', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        strategy: strategy,
+                        riskTolerance: 'moderate'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                let html = `
+                    <h4>✅ ${symbol} 测试成功</h4>
+                    <p><strong>当前股价:</strong> $${data.currentPrice}</p>
+                    <p><strong>数据源:</strong> ${data.stockData?.dataSource || 'Unknown'}</p>
+                    <p><strong>推荐期权数量:</strong> ${data.recommendations.length}</p>
+                    <h5>前3个推荐:</h5>
+                `;
+
+                data.recommendations.slice(0, 3).forEach((rec, index) => {
+                    html += `
+                        <div style="margin: 8px 0; padding: 8px; background: white; border-left: 3px solid #4CAF50;">
+                            <strong>${index + 1}.</strong> 
+                            <span class="strike">$${rec.strike}</span> ${rec.type} 
+                            | 权利金: <span class="premium">$${rec.premium}</span>
+                            | 买价: $${rec.bid || 'N/A'} | 卖价: $${rec.ask || 'N/A'}
+                            | 成交量: ${rec.volume || 0} | 概率: ${(rec.probability * 100).toFixed(1)}%
+                            | 数据源: ${rec.dataSource || 'Unknown'}
+                        </div>
+                    `;
+                });
+
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h4>❌ 测试失败</h4>
+                    <p style="color: red;"><strong>错误:</strong> ${error.message}</p>
+                `;
+            }
+        }
+
+        // 页面加载时显示说明
+        window.onload = function() {
+            document.body.insertAdjacentHTML('afterbegin', `
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                    <h3>🎯 修复验证目标</h3>
+                    <ul>
+                        <li>✅ 权利金不再显示为0</li>
+                        <li>✅ 行权价基于真实股价计算</li>
+                        <li>✅ 支持多种股票（大盘股、中概股、小价股）</li>
+                        <li>✅ 显示详细的期权参数（买卖价、成交量等）</li>
+                        <li>✅ 标明数据来源</li>
+                    </ul>
+                </div>
+            `);
+        };
+    </script>
+</body>
+</html>
