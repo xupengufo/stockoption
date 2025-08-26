@@ -132,9 +132,13 @@ docker stop options-analyzer
    - 使用GitHub登录
    - 点击"New Project"
    - 选择您的stockWeb仓库
-   - 配置环境变量：
-     - `POLYGON_API_KEY`: 您的API密钥
+   - **重要**: 配置环境变量（这是显示真实数据的关键）：
+     - 变量名: `POLYGON_API_KEY`
+     - 变量值: 您从Polygon.io获取的真实API密钥
+     - 应用到: Production, Preview, Development
    - 点击"Deploy"
+   
+   **注意**: 如果不设置POLYGON_API_KEY环境变量，系统将只显示模拟数据！
 
 3. **配置域名**（可选）：
    - 在Vercel项目设置中添加自定义域名
@@ -300,6 +304,58 @@ docker-compose build --no-cache
 2. **HTTPS配置**：生产环境必须使用HTTPS
 3. **API限流**：防止API滥用
 4. **定期更新依赖**：修复安全漏洞
+
+## ⚙️ 故障排除
+
+### 问题: Vercel部署后显示模拟数据而非真实数据
+
+**原因**: 最常见的原因是环境变量`POLYGON_API_KEY`没有正确配置。
+
+**解决方案**:
+1. 登录Vercel控制台
+2. 进入您的项目设置
+3. 点击"Environment Variables"
+4. 添加变量:
+   - Name: `POLYGON_API_KEY`
+   - Value: 您的真实Polygon.io API密钥
+   - Environments: 勾选所有环境（Production, Preview, Development）
+5. 保存并重新部署
+
+**验证方法**:
+```bash
+# 测试API响应
+curl "https://your-app.vercel.app/api/stock/AAPL"
+
+# 如果配置正确，应该返回真实的股票数据而非模拟数据
+```
+
+### 问题: 前端无法连接到后端API
+
+**原因**: 前端API路径配置不正确。
+
+**解决方案**: 本修复已在本次更新中包含，前端现在会在生产环境中自动使用相对路径。
+
+### 问题: API请求频率限制
+
+**原因**: Polygon.io对免费版本有请求频率限制。
+
+**解决方案**: 
+- 系统已集成缓存机制，可减少API调用
+- 考虑升级到Polygon.io付费版本以获取更高的请求限制
+
+### 问题: 部署后网站无法访问
+
+**检查项**:
+1. 确认vercel.json配置正确
+2. 检查构建日志是否有错误
+3. 确认前后端代码都已推送到GitHub
+
+---
+
+如果您仍然遇到问题，请检查:
+1. 是否按照上述步骤正确配置了环境变量
+2. Polygon.io API密钥是否有效且有权限访问股票和期权数据
+3. 检查浏览器控制台是否有错误信息
 
 ---
 

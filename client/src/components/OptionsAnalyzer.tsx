@@ -14,7 +14,10 @@ const OptionsAnalyzer: React.FC = () => {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [stockData, setStockData] = useState<StockData | null>(null);
 
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+  // 在生产环境（如Vercel）中使用相对路径，开发环境使用localhost
+  const API_BASE_URL = process.env.NODE_ENV === 'production' 
+    ? '' // 生产环境使用相对路径，Vercel会自动代理到serverless函数
+    : process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
   const fetchStockData = useCallback(async (ticker: string) => {
     try {

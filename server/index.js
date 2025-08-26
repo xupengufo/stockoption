@@ -104,8 +104,24 @@ app.get('/api/stock/:symbol', async (req, res) => {
       return res.json(cachedData);
     }
 
-    if (!POLYGON_API_KEY) {
-      return res.status(500).json({ error: 'API密钥未配置' });
+    if (!POLYGON_API_KEY || POLYGON_API_KEY === 'your_polygon_api_key_here') {
+      // 返回模拟数据
+      console.log(`返回${symbol}的模拟股票数据`);
+      const mockPrice = symbol === 'AAPL' ? 175.50 : 150.00;
+      const mockData = {
+        results: [{
+          c: mockPrice,  // 收盘价
+          h: mockPrice * 1.02,  // 最高价
+          l: mockPrice * 0.98,  // 最低价
+          o: mockPrice * 1.01,  // 开盘价
+          v: 45234567,  // 成交量
+          t: Date.now()  // 时间戳
+        }],
+        status: 'OK',
+        request_id: 'mock-request'
+      };
+      cache.set(cacheKey, mockData);
+      return res.json(mockData);
     }
 
     try {
@@ -146,6 +162,12 @@ app.get('/api/stock/:symbol', async (req, res) => {
 
 // 计算期权策略分析
 const analyzeOptionStrategy = async (symbol, strategy, riskTolerance) => {
+  // 如果没有API密钥，使用模拟数据
+  if (!POLYGON_API_KEY || POLYGON_API_KEY === 'your_polygon_api_key_here') {
+    console.log('使用模拟数据进行演示');
+    return generateMockAnalysis(symbol, strategy, riskTolerance);
+  }
+  
   // 获取股票当前价格
   const stockResponse = await axios.get(`${POLYGON_BASE_URL}/v2/aggs/ticker/${symbol}/prev`, {
     params: { adjusted: true, apikey: POLYGON_API_KEY }
@@ -184,6 +206,65 @@ const analyzeOptionStrategy = async (symbol, strategy, riskTolerance) => {
     strategy,
     recommendations,
     riskMetrics: calculateRiskMetrics(recommendations)
+  };
+};
+
+// 生成模拟分析数据
+const generateMockAnalysis = (symbol, strategy, riskTolerance) => {
+  const mockPrice = symbol === 'AAPL' ? 175.50 : 150.00;
+  
+  let recommendations = [];
+  
+  if (strategy === 'cash-secured-put') {
+    recommendations = [
+      {
+        type: 'PUT',
+        strike: mockPrice * 0.95,
+        expiration: '2024-01-19',
+        premium: 3.50,
+        probability: 0.75,
+        maxProfit: mockPrice * 0.95 * 100,
+        maxLoss: -((mockPrice - mockPrice * 0.95) * 100),
+        breakeven: mockPrice * 0.95 - 3.50,
+        annualizedReturn: 0.12
+      },
+      {
+        type: 'PUT',
+        strike: mockPrice * 0.90,
+        expiration: '2024-01-19',
+        premium: 2.25,
+        probability: 0.85,
+        maxProfit: mockPrice * 0.90 * 100,
+        maxLoss: -((mockPrice - mockPrice * 0.90) * 100),
+        breakeven: mockPrice * 0.90 - 2.25,
+        annualizedReturn: 0.08
+      }
+    ];
+  } else if (strategy === 'covered-call') {
+    recommendations = [
+      {
+        type: 'CALL',
+        strike: mockPrice * 1.05,
+        expiration: '2024-01-19',
+        premium: 4.25,
+        probability: 0.70,
+        maxProfit: (mockPrice * 1.05 - mockPrice + 4.25) * 100,
+        maxLoss: -(mockPrice * 100),
+        breakeven: mockPrice - 4.25,
+        annualizedReturn: 0.15
+      }
+    ];
+  }
+  
+  return {
+    symbol,
+    strategy,
+    recommendations,
+    riskMetrics: {
+      maxDrawdown: 0.15 + (Math.random() * 0.1),
+      sharpeRatio: 1.0 + (Math.random() * 0.5),
+      winRate: 0.75
+    }
   };
 };
 

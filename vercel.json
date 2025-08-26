@@ -23,7 +23,5 @@
       "dest": "/client/$1"
     }
   ],
-  "env": {
-    "POLYGON_API_KEY": "WxoSPY6czjweSx5etNSSF82S7tps0Nfn"
-  }
+  "env": {}
 }
