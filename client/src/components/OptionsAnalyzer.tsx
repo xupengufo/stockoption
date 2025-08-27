@@ -5,6 +5,7 @@ import SymbolSearch from './SymbolSearch';
 import StrategySelector from './StrategySelector';
 import RecommendationsList from './RecommendationsList';
 import RiskMetrics from './RiskMetrics';
+import PolygonDiagnostic from './PolygonDiagnostic';
 
 const OptionsAnalyzer: React.FC = () => {
   const [symbol, setSymbol] = useState<string>('AAPL');
@@ -126,6 +127,14 @@ const OptionsAnalyzer: React.FC = () => {
         {polygon?.available && (
           <div className="mt-2 text-xs text-green-600">
             ✨ 推荐使用Polygon.io获取最准确的期权数据
+          </div>
+        )}
+        {!polygon?.available && polygon !== undefined && (
+          <div className="mt-3">
+            <PolygonDiagnostic 
+              onRefresh={fetchDataSourceStatus} 
+              apiBaseUrl={API_BASE_URL}
+            />
           </div>
         )}
       </div>

@@ -961,16 +961,55 @@ app.post('/api/analyze-polygon', async (req, res) => {
 // 获取数据源状态
 app.get('/api/data-sources/status', async (req, res) => {
   try {
+    // 添加API密钥检查日志
+    const polygonKeyExists = !!(process.env.POLYGON_API_KEY && process.env.POLYGON_API_KEY !== 'your_polygon_api_key_here');
+    console.log('Polygon.io API密钥检查:', {
+      exists: polygonKeyExists,
+      keyPrefix: process.env.POLYGON_API_KEY ? process.env.POLYGON_API_KEY.substring(0, 8) + '...' : '未设置'
+    });
+    
+    // 测试Polygon.io API实际连接
+    let polygonTestResult = { available: false, error: null };
+    if (polygonKeyExists) {
+      try {
+        // 进行实际API测试
+        const testResponse = await axios.get(`${POLYGON_BASE_URL}/v2/aggs/ticker/AAPL/prev`, {
+          params: {
+            adjusted: true,
+            apikey: process.env.POLYGON_API_KEY
+          },
+          timeout: 5000
+        });
+        polygonTestResult.available = testResponse.status === 200 && testResponse.data.results;
+        console.log('Polygon.io API测试成功');
+      } catch (error) {
+        polygonTestResult.error = error.message;
+        console.log('Polygon.io API测试失败:', error.message);
+      }
+    }
+    
+    // 测试富途API连接
+    let futuTestResult = { available: false };
+    try {
+      futuTestResult.available = await enhancedDataManager.futuAPI.checkAvailability();
+    } catch (error) {
+      console.log('富途API测试失败:', error.message);
+    }
+    
     const status = {
       polygon: {
-        available: polygonDataManager.isAvailable(),
+        available: polygonTestResult.available,
         name: 'Polygon.io',
         features: ['股票价格', '期权链', '实时报价', '历史数据'],
         quality: 'Professional Grade',
-        cost: 'Paid API'
+        cost: 'Paid API',
+        keyConfigured: polygonKeyExists,
+        testResult: polygonTestResult,
+        environment: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
       },
       futu: {
-        available: enhancedDataManager.futuAPI ? await enhancedDataManager.futuAPI.checkAvailability() : false,
+        available: futuTestResult.available,
         name: '富途OpenAPI',
         features: ['股票信息', '期权链', 'Greeks数据', '实时报价'],
         quality: 'Trading Grade',
@@ -998,13 +1037,105 @@ app.get('/api/data-sources/status', async (req, res) => {
         '/api/analyze-universal': '通用分析（支持所有股票）',
         '/api/analyze-v2': '标准分析（Yahoo Finance + Black-Scholes）'
       },
-      timestamp: new Date().toISOString()
+      serverInfo: {
+        nodeEnv: process.env.NODE_ENV,
+        timestamp: new Date().toISOString(),
+        polygonKeyStatus: polygonKeyExists ? 'configured' : 'missing'
+      }
     };
     
+    // 设置较短的缓存时间，避免状态更新延迟
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.json(status);
   } catch (error) {
     console.error('获取数据源状态错误:', error.message);
-    res.status(500).json({ error: '获取状态失败' });
+    res.status(500).json({ 
+      error: '获取状态失败',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 刷新数据源状态端点（无缓存）
+app.post('/api/data-sources/refresh', async (req, res) => {
+  try {
+    console.log('🔄 强制刷新数据源状态...');
+    
+    // 清空缓存
+    cache.flushAll();
+    
+    // 测试Polygon.io API
+    let polygonStatus = { available: false, error: null, testDetails: {} };
+    
+    if (process.env.POLYGON_API_KEY && process.env.POLYGON_API_KEY !== 'your_polygon_api_key_here') {
+      try {
+        console.log('正在测试Polygon.io API连接...');
+        const testStart = Date.now();
+        
+        const testResponse = await axios.get(`${POLYGON_BASE_URL}/v2/aggs/ticker/AAPL/prev`, {
+          params: {
+            adjusted: true,
+            apikey: process.env.POLYGON_API_KEY
+          },
+          timeout: 10000
+        });
+        
+        const testDuration = Date.now() - testStart;
+        
+        if (testResponse.status === 200 && testResponse.data.results) {
+          polygonStatus = {
+            available: true,
+            error: null,
+            testDetails: {
+              responseTime: `${testDuration}ms`,
+              dataReceived: testResponse.data.results.length > 0,
+              apiQuota: testResponse.headers['x-ratelimit-remaining'] || 'unknown',
+              testSymbol: 'AAPL',
+              testPrice: testResponse.data.results[0]?.c || 'N/A'
+            }
+          };
+          console.log('✅ Polygon.io API测试成功');
+        }
+      } catch (error) {
+        polygonStatus.error = error.message;
+        polygonStatus.testDetails = {
+          errorType: error.response?.status === 401 ? 'Authentication Failed' :
+                     error.response?.status === 403 ? 'Access Denied' :
+                     error.response?.status === 429 ? 'Rate Limited' :
+                     'Connection Error',
+          statusCode: error.response?.status || 'No Response'
+        };
+        console.log('❌ Polygon.io API测试失败:', error.message);
+      }
+    } else {
+      polygonStatus.error = 'API密钥未配置或为默认值';
+    }
+    
+    const refreshResult = {
+      success: true,
+      message: '数据源状态已刷新',
+      polygon: polygonStatus,
+      environment: {
+        nodeEnv: process.env.NODE_ENV,
+        hasPolygonKey: !!(process.env.POLYGON_API_KEY && process.env.POLYGON_API_KEY !== 'your_polygon_api_key_here'),
+        polygonKeyPrefix: process.env.POLYGON_API_KEY ? process.env.POLYGON_API_KEY.substring(0, 8) + '...' : 'Not Set'
+      },
+      timestamp: new Date().toISOString(),
+      cacheCleared: true
+    };
+    
+    console.log('🎉 数据源状态刷新完成');
+    res.json(refreshResult);
+    
+  } catch (error) {
+    console.error('刷新数据源状态错误:', error.message);
+    res.status(500).json({
+      success: false,
+      error: '刷新失败',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
