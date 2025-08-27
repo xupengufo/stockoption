@@ -904,6 +904,9 @@ app.post('/api/analyze-polygon', async (req, res) => {
     });
   }
 });
+
+// 富途OpenAPI增强分析（真实期权数据 + 多数据源回退）
+app.post('/api/analyze-futu', async (req, res) => {
   try {
     const { symbol, strategy, riskTolerance } = req.body;
     
